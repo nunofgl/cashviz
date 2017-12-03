@@ -241,27 +241,40 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
         .attr("transform",
             "translate(" + margin.left + "," + margin.top + ")");
 
-    // Get the data
-    var data = [],
-        partial = 0;
-    for (var trnId in transactionsObject) {
-        transactionsObject[trnId].splits.forEach(split => {
-            if (split.account === someAccountIds[0]) {
-                partial += split.quantity;
-                data.push({ "date": transactionsObject[trnId].datePosted, "partial": partial });
-            }
-        });
-    }
+
+    var accountData = {},
+        minDate = parseDateYearMonth("3000-12");
+    maxDate = parseDateYearMonth("1000-01");
+    maxPartial = 0;
+    accountIds.forEach(acc => {
+        // Get the data
+        var data = [],
+            partial = 0;
+        for (var trnId in transactionsObject) {
+            transactionsObject[trnId].splits.forEach(split => {
+                if (split.account === acc) {
+                    partial += split.quantity;
+                    minDate = minDate < transactionsObject[trnId].datePosted ? minDate : transactionsObject[trnId].datePosted;
+                    maxDate = maxDate > transactionsObject[trnId].datePosted ? maxDate : transactionsObject[trnId].datePosted;
+                    maxPartial = maxPartial > partial ? maxPartial : partial;
+                    data.push({ "date": transactionsObject[trnId].datePosted, "partial": partial });
+                }
+            });
+        }
+        accountData[acc] = data;
+    });
 
     // Scale the range of the data
-    x.domain(d3.extent(data, function(d) { return d.date; }));
-    y.domain([0, d3.max(data, function(d) { return d.partial; })]);
+    x.domain([minDate, maxDate]);
+    y.domain([0, maxPartial]);
 
-    // Add the valueline path.
-    svg.append("path")
-        .data([data])
-        .attr("class", "line")
-        .attr("d", valueline);
+    // Add the valueline paths.
+    for (var acc in accountData) {
+        svg.append("path")
+            .data([accountData[acc]])
+            .attr("class", "line")
+            .attr("d", valueline);
+    }
 
     // Add the X Axis
     svg.append("g")
