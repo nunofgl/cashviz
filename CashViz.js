@@ -97,60 +97,55 @@ function parseGnca(error, data) {
 
     console.log("accountsObject", accountsObject);
 
-    // Gather account information into an array of account objects
-    var transactions = [].map.call(data.querySelectorAll("transaction"),
-        function(trn) {
-            try {
-                return {
-                    //version: act.getAttribute("version"),
-                    currency: trn.querySelector("currency").querySelector("id").textContent,
-                    datePosted: parseDate(trn.querySelector("date-posted").querySelector("date").textContent), //TODO: convert to date
-                    description: trn.querySelector("description").textContent,
-                    splits: getTransactionSplits(trn)
-                };
-            } catch (e) {
-                if (debug) {
-                    debugPrint(e);
-                }
+    var transactionsObject = {};
+    data.querySelectorAll("transaction").forEach(trn => {
+        try {
+            var id = trn.querySelector("id").textContent;
+            transactionsObject[id] = {}
+            transactionsObject[id]["currency"] = trn.querySelector("currency").querySelector("id").textContent;
+            transactionsObject[id]["datePosted"] = parseDate(trn.querySelector("date-posted").querySelector("date").textContent);
+            transactionsObject[id]["description"] = trn.querySelector("description").textContent;
+            transactionsObject[id]["splits"] = getTransactionSplits(trn);
+        } catch (e) {
+            if (debug) {
+                debugPrint(e);
             }
-        }).filter(function(element) {
-        return element !== undefined;
+        }
     });
 
-    console.log("transactions", transactions);
+    console.log("transactionsObject", transactionsObject);
 
     // console.log({ "accounts": accountsObject, "transactions": transactions });
 
     // gncaData = { "accounts": accountsObject, "transactions": transactions };
 
-    main(accountsObject, transactions);
+    main(accountsObject, transactionsObject);
 }
 
 
-function monthlyTotalProfit(accountsObject, transactionArray) {
+function monthlyTotalProfit(accountsObject, transactionsObject) {
 
     // Bin transactions by year.month
     var data = {},
         points = [];
-    console.log(transactionArray);
-    transactionArray.forEach(trn => {
 
-        if (data[yearMonth(trn.datePosted)] == undefined) {
+    for (var trnId in transactionsObject) {
+        if (data[yearMonth(transactionsObject[trnId].datePosted)] == undefined) {
             // console.log("##########################");
             // console.log(yearMonth(trn.datePosted));
-            data[yearMonth(trn.datePosted)] = 0;
+            data[yearMonth(transactionsObject[trnId].datePosted)] = 0;
         }
 
         // console.log("##########################");
         // console.log(accountsObject[trn.splits[0].account].name, data[yearMonth(trn.datePosted)]);
 
-        if (!accountsAreSameKind(accountsObject[trn.splits[0].account], accountsObject[trn.splits[1].account])) {
-            if (positiveAccountTypes.includes(accountsObject[trn.splits[0].account].type)) {
-                console.log(accountsObject[trn.splits[0].account].type, "good", trn.splits[0].quantity);
-                data[yearMonth(trn.datePosted)] += trn.splits[0].quantity;
+        if (!accountsAreSameKind(accountsObject[transactionsObject[trnId].splits[0].account], accountsObject[transactionsObject[trnId].splits[1].account])) {
+            if (positiveAccountTypes.includes(accountsObject[transactionsObject[trnId].splits[0].account].type)) {
+                console.log(accountsObject[transactionsObject[trnId].splits[0].account].type, "good", transactionsObject[trnId].splits[0].quantity);
+                data[yearMonth(transactionsObject[trnId].datePosted)] += transactionsObject[trnId].splits[0].quantity;
             } else {
-                console.log(accountsObject[trn.splits[0].account].type, "bad", trn.splits[0].quantity);
-                data[yearMonth(trn.datePosted)] -= trn.splits[0].quantity;
+                console.log(accountsObject[transactionsObject[trnId].splits[0].account].type, "bad", transactionsObject[trnId].splits[0].quantity);
+                data[yearMonth(transactionsObject[trnId].datePosted)] -= transactionsObject[trnId].splits[0].quantity;
             }
         }
 
@@ -161,7 +156,8 @@ function monthlyTotalProfit(accountsObject, transactionArray) {
         //     positiveAccountTypes.includes(accountsObject[trn.splits[0].account].type) ?
         //     (trn.splits[0].quantity > 0 ? trn.splits[0].quantity : -trn.splits[0].quantity) :
         //     (trn.splits[0].quantity > 0 ? -trn.splits[0].quantity : trn.splits[0].quantity);
-    });
+
+    }
 
     for (var ym in data) {
         points.push({ yearMonth: parseDateYearMonth(ym), quantity: data[ym] });
@@ -209,6 +205,14 @@ function monthlyTotalProfit(accountsObject, transactionArray) {
         .attr("height", function(d) { return Math.abs(y(d.quantity) - y(0)); });
 
 }
+
+
+function accountTimeLines() {
+
+
+
+}
+
 
 d3.xml(gncaPath, parseGnca);
 
