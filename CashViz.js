@@ -1,6 +1,3 @@
-// TEMPORARY VARIABLES
-var gncaPath = '20171202_110643_gnucash_export_Livro_1.gnca';
-var someAccountIds = ['4d849998e7fee25043cbc86af06e7fc0', '1423ea7c1319b7e1a507d2cef8c6e610', 'e9472a3ad501e82750423eff1cecdae8'];
 
 
 
@@ -286,8 +283,6 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
         .call(d3.axisLeft(y));
 }
 
-
-d3.xml(gncaPath, parseGnca);
 
 // This function is called from the callback passed to d3.xml because the callback must be synchronous
 // The whole data from the gnca/xml file is loaded and then handled in the main function
