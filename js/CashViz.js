@@ -1,7 +1,3 @@
-
-
-
-
 const debug = false; // TODO debug output must be sent to a file, otherwise the browser goes insane
 
 const regexRational = /-?\d+\/\d+/;
@@ -124,6 +120,18 @@ function parseGnca(error, data) {
 }
 
 
+function makePageTitle() {
+    var svg = d3.select("body").append("svg")
+    		.append("text")
+		.attr("id", "CashVizTitle")
+		.attr("class", "title")
+		.attr("x", 0)
+		.attr("y", 0)
+		.text("CashViz: Know your finances!");
+
+    console.log("hello");
+}
+
 function monthlyTotalProfit(accountsObject, transactionsObject) {
 
     // Bin transactions by year.month
@@ -184,6 +192,16 @@ function monthlyTotalProfit(accountsObject, transactionsObject) {
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+    var title = svg.append("g")
+    		.append("text")
+    		.attr("id", "CashVizTitle")
+    		.attr("class", "title")
+    		.attr("x", 0)
+    		.attr("y", 0)
+    		.text("CashViz: Know your finances!");
+    
+    console.log("hello");
+    
     x.domain(points.map(function(d) { return d.yearMonth; }));
     y.domain(d3.extent(points, function(d) { return d.quantity; }));
 
@@ -288,6 +306,9 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
 // The whole data from the gnca/xml file is loaded and then handled in the main function
 function main(accountsObject, transactions) {
 
+	// Make a title for the page
+	makePageTitle();
+	
     // Make a bar chart
     // monthlyTotalProfit(accountsObject, transactions);
 
