@@ -2,6 +2,9 @@ const debug = false; // TODO debug output must be sent to a file, otherwise the 
 
 const regexRational = /-?\d+\/\d+/;
 
+
+var dateForecast = '2017-09-01';
+
 // TODO
 // Check if last month's transactions add up
 // Accounts need to be set to negative or positive, good or bad, manually, with widgets
@@ -29,8 +32,27 @@ const positiveAccountTypes = [ASSET, BANK, MUTUAL, CASH],
 //neutralAccounts = [Adjustments, Initial];
 
 var parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S %Z");
+var parseDateYearMonthDay = d3.timeParse("%Y-%m-%d");
 var parseDateYearMonth = d3.timeParse("%Y-%m");
 var yearMonth = d3.timeFormat("%Y-%m");
+
+
+// Functions to call on elements to bring them to the front and to back
+// http://bl.ocks.org/eesur/4e0a69d57d3bfc8a82c2
+d3.selection.prototype.moveToFront = function() {  
+	return this.each(function(){
+		this.parentNode.appendChild(this);
+	});
+};
+
+d3.selection.prototype.moveToBack = function() {  
+    return this.each(function() { 
+        var firstChild = this.parentNode.firstChild; 
+        if (firstChild) { 
+            this.parentNode.insertBefore(this, firstChild); 
+        } 
+    });
+};
 
 
 function accountsAreSameKind(a, b) {
@@ -61,8 +83,6 @@ function getTransactionSplits(trn) {
             return {
                 id: split.querySelector("id").textContent,
                 reconciledState: split.querySelector("reconciled-state").textContent,
-                // value: math.eval(split.querySelector("value").textContent),
-                // quantity: math.eval(split.querySelector("quantity").textContent),
                 value: eval(split.querySelector("value").textContent.match(regexRational)[0]),
                 quantity: eval(split.querySelector("quantity").textContent.match(regexRational)[0]),
                 account: split.querySelector("account").textContent
@@ -73,8 +93,6 @@ function getTransactionSplits(trn) {
 
 function parseGnca(error, data) {
     if (error) throw error;
-
-    console.log("data", data);
 
     var accountsObject = {};
     data.querySelectorAll("account").forEach(act => {
@@ -92,8 +110,6 @@ function parseGnca(error, data) {
         }
     });
 
-    console.log("accountsObject", accountsObject);
-
     var transactionsObject = {};
     data.querySelectorAll("transaction").forEach(trn => {
         try {
@@ -110,27 +126,9 @@ function parseGnca(error, data) {
         }
     });
 
-    console.log("transactionsObject", transactionsObject);
-
-    // console.log({ "accounts": accountsObject, "transactions": transactions });
-
-    // gncaData = { "accounts": accountsObject, "transactions": transactions };
-
     main(accountsObject, transactionsObject);
 }
 
-
-function makePageTitle() {
-    var svg = d3.select("body").append("svg")
-    		.append("text")
-		.attr("id", "CashVizTitle")
-		.attr("class", "title")
-		.attr("x", 0)
-		.attr("y", 0)
-		.text("CashViz: Know your finances!");
-
-    console.log("hello");
-}
 
 function monthlyTotalProfit(accountsObject, transactionsObject) {
 
@@ -140,38 +138,23 @@ function monthlyTotalProfit(accountsObject, transactionsObject) {
 
     for (var trnId in transactionsObject) {
         if (data[yearMonth(transactionsObject[trnId].datePosted)] == undefined) {
-            // console.log("##########################");
-            // console.log(yearMonth(trn.datePosted));
             data[yearMonth(transactionsObject[trnId].datePosted)] = 0;
         }
 
-        // console.log("##########################");
-        // console.log(accountsObject[trn.splits[0].account].name, data[yearMonth(trn.datePosted)]);
-
         if (!accountsAreSameKind(accountsObject[transactionsObject[trnId].splits[0].account], accountsObject[transactionsObject[trnId].splits[1].account])) {
             if (positiveAccountTypes.includes(accountsObject[transactionsObject[trnId].splits[0].account].type)) {
-                console.log(accountsObject[transactionsObject[trnId].splits[0].account].type, "good", transactionsObject[trnId].splits[0].quantity);
                 data[yearMonth(transactionsObject[trnId].datePosted)] += transactionsObject[trnId].splits[0].quantity;
             } else {
-                console.log(accountsObject[transactionsObject[trnId].splits[0].account].type, "bad", transactionsObject[trnId].splits[0].quantity);
                 data[yearMonth(transactionsObject[trnId].datePosted)] -= transactionsObject[trnId].splits[0].quantity;
             }
         }
-
-        // console.log(accountsObject[trn.splits[0].account].name, data[yearMonth(trn.datePosted)]);
-        // console.log("##########################");
-
-        // data[yearMonth(trn.datePosted)] +=
-        //     positiveAccountTypes.includes(accountsObject[trn.splits[0].account].type) ?
-        //     (trn.splits[0].quantity > 0 ? trn.splits[0].quantity : -trn.splits[0].quantity) :
-        //     (trn.splits[0].quantity > 0 ? -trn.splits[0].quantity : trn.splits[0].quantity);
 
     }
 
     for (var ym in data) {
         points.push({ yearMonth: parseDateYearMonth(ym), quantity: data[ym] });
     }
-
+    
     var margin = { top: 20, right: 20, bottom: 30, left: 40 },
         width = 960 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
@@ -196,16 +179,14 @@ function monthlyTotalProfit(accountsObject, transactionsObject) {
     		.append("text")
     		.attr("id", "CashVizTitle")
     		.attr("class", "title")
-    		.attr("x", 0)
+    		.attr("x", 20)
     		.attr("y", 0)
-    		.text("CashViz: Know your finances!");
-    
-    console.log("hello");
+    		.text("Net monthly balance");
     
     x.domain(points.map(function(d) { return d.yearMonth; }));
     y.domain(d3.extent(points, function(d) { return d.quantity; }));
 
-    svg.append("g")
+    var xAxis = svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + y(0) + ")")
         .call(xAxis);
@@ -222,6 +203,8 @@ function monthlyTotalProfit(accountsObject, transactionsObject) {
         .attr("width", x.bandwidth() * 0.9)
         .attr("y", function(d) { return d.quantity > 0 ? y(d.quantity) : y(0); })
         .attr("height", function(d) { return Math.abs(y(d.quantity) - y(0)); });
+
+    xAxis.moveToFront();
 
 }
 
@@ -256,8 +239,16 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
         .attr("transform",
             "translate(" + margin.left + "," + margin.top + ")");
 
+    var title = svg.append("g")
+	.append("text")
+	.attr("id", "CashVizTitle")
+	.attr("class", "title")
+	.attr("x", 20)
+	.attr("y", 0)
+	.text("Overall account balance over time");
 
-    var accountData = {},
+    var forecastBaseData = [],
+    		accountData = {},
         minDate = parseDateYearMonth("3000-12");
     maxDate = parseDateYearMonth("1000-01");
     maxPartial = 0;
@@ -265,6 +256,7 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
         // Get the data
         var data = [],
             partial = 0;
+		forecastBaseData.push([]);
         for (var trnId in transactionsObject) {
             transactionsObject[trnId].splits.forEach(split => {
                 if (split.account === acc) {
@@ -273,6 +265,10 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
                     maxDate = maxDate > transactionsObject[trnId].datePosted ? maxDate : transactionsObject[trnId].datePosted;
                     maxPartial = maxPartial > partial ? maxPartial : partial;
                     data.push({ "date": transactionsObject[trnId].datePosted, "partial": partial });
+                    if (parseDateYearMonthDay(dateForecast) <= data[data.length - 1].date) {
+                    		console.log("if");
+                    		forecastBaseData[forecastBaseData.length - 1].push({ "date": data[data.length - 1].date, "partial": data[data.length - 1].partial });
+                    }
                 }
             });
         }
@@ -299,6 +295,14 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
     // Add the Y Axis
     svg.append("g")
         .call(d3.axisLeft(y));
+    
+    // Request forecast
+    d3.request("/cashviz/forecast")
+    		.header("Content-Type", "application/json")
+    		.post(JSON.stringify( { 'data': forecastBaseData } ), function(error, response) {
+    			console.log(error);
+    			console.log(response);
+        		});
 }
 
 
@@ -306,11 +310,8 @@ function accountTimeLines(accountsObject, transactionsObject, accountIds) {
 // The whole data from the gnca/xml file is loaded and then handled in the main function
 function main(accountsObject, transactions) {
 
-	// Make a title for the page
-	makePageTitle();
-	
     // Make a bar chart
-    // monthlyTotalProfit(accountsObject, transactions);
+    monthlyTotalProfit(accountsObject, transactions);
 
     accountTimeLines(accountsObject, transactions, someAccountIds);
 
