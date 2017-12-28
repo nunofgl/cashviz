@@ -294,3 +294,8 @@ function main(accountsObject, transactions) {
     accountTimeLines(accountsObject, transactions, someAccountIds);
 
 };
+
+// Run CashViz
+d3.xml(gncaPath, parseGnca);
+
+
